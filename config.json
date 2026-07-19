@@ -1,0 +1,12 @@
+{
+  "brightness": 4,
+  "animationSpeed": 2,
+  "starryNight": {
+    "comment": "Onboard effect pinned to Armoury Crate's Starry Night. Re-capture with Capture-CurrentEffect.ps1. mode 0x0E = vortex.",
+    "mode": 14,
+    "speed": 1,
+    "direction": 0,
+    "rgb": [0, 0, 255],
+    "useAuraColor": false
+  }
+}
