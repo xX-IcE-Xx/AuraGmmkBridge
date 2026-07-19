@@ -64,9 +64,8 @@ one.
 ## Requirements
 
 - Glorious GMMK v1, 2021 revision (USB `320F:5064`, SONiX platform — the ID the
-  keyboard reports on the `GMMK-RGB` TKL and full-size). The older `0C45:652F`
-  revision speaks the same protocol family and likely works by changing
-  `VidPid` in `GmmkHid.cs`, but is untested here.
+  keyboard reports on the `GMMK-RGB` TKL and full-size). Other revisions: see
+  [Porting to other GMMK revisions](#porting-to-other-gmmk-revisions).
 - ASUS motherboard with Armoury Crate (tested: ROG Crosshair X870E Hero,
   Armoury Crate 6.5.7, Aura 3.0 / `RogAura30` plugin).
 - Windows 11, PowerShell 7.
@@ -87,6 +86,40 @@ Remove with `Unregister-ScheduledTask AuraGmmkBridge`.
 - `Capture-CurrentEffect.ps1` — pin the keyboard's current effect to Starry Night.
 - `Set-KeyboardColor.ps1 -R 255 -G 0 -B 0` — manually set a static color (stop
   the bridge first, or it will overwrite within 5 minutes).
+
+## Porting to other GMMK revisions
+
+Only tested on `320F:5064`, but two knobs cover most of the family:
+
+1. **USB ID** — set `vidPid` in `config.json` (format `"vid_xxxx&pid_xxxx"`,
+   find yours in Device Manager under the keyboard's hardware IDs). The older
+   GMMK v1 revision is `vid_0c45&pid_652f` and speaks the same protocol family
+   ([dokutan/rgb_keyboard](https://github.com/dokutan/rgb_keyboard) documents
+   it). The driver auto-selects the right HID collection by its 64-byte report
+   length, so no interface/collection numbers to configure.
+2. **Mode numbers** — the onboard mode table this protocol family uses
+   (`SetMode` value → effect):
+
+   | #    | effect          | #    | effect              |
+   |------|-----------------|------|---------------------|
+   | 0x01 | horizontal wave | 0x0B | swirl               |
+   | 0x02 | pulse           | 0x0C | vertical wave       |
+   | 0x03 | hurricane       | 0x0D | sine                |
+   | 0x04 | breathing color | 0x0E | vortex              |
+   | 0x05 | breathing       | 0x0F | rain                |
+   | 0x06 | fixed (static)  | 0x10 | diagonal wave       |
+   | 0x07 | reactive single | 0x11 | reactive color      |
+   | 0x08 | reactive ripple | 0x12 | ripple              |
+   | 0x09 | reactive horiz. | 0x13 | off                 |
+   | 0x0A | waterfall       | 0x14 | custom (per-key)    |
+
+   Your board reports which of these it supports: run
+   `Capture-CurrentEffect.ps1` while cycling effects with the Fn shortcuts to
+   see the mode number of whatever is active. If a mapping in `Bridge.ps1`'s
+   `Apply-ToKeyboard` picks a mode your board lacks, swap it there.
+
+GMMK Pro / GMMK 2 / GMMK 3 are **different platforms** (QMK / Glorious Core 2)
+and this protocol does not apply.
 
 ## Caveats
 

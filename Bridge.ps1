@@ -18,6 +18,7 @@ $ConfigFile = "$PSScriptRoot\config.json"
 Add-Type -Path "$PSScriptRoot\GmmkHid.cs"
 
 $Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+if ($Config.vidPid) { [AuraGmmkBridge.Gmmk]::VidPid = $Config.vidPid }
 $script:profile = 0    # active onboard profile, refreshed on connect
 
 # The keyboard occasionally drops a write right after a burst of commands

@@ -5,6 +5,9 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -Path "$PSScriptRoot\GmmkHid.cs"
 
+$cfg = Get-Content "$PSScriptRoot\config.json" -Raw | ConvertFrom-Json
+if ($cfg.vidPid) { [AuraGmmkBridge.Gmmk]::VidPid = $cfg.vidPid }
+
 [AuraGmmkBridge.Gmmk]::Connect()
 $info = [AuraGmmkBridge.Gmmk]::ReadState()
 if (-not $info) { throw 'No reply from keyboard (device info query)' }

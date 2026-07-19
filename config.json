@@ -1,4 +1,5 @@
 {
+  "vidPid": "vid_320f&pid_5064",
   "brightness": 4,
   "animationSpeed": 1,
   "speedComment": "speed values are raw wire bytes: 0 = fastest, 3 = slowest",

@@ -31,7 +31,9 @@ namespace AuraGmmkBridge
 {
     public static class Gmmk
     {
-        const string VidPid = "vid_320f&pid_5064";
+        // Overridable for other GMMK revisions (e.g. the older "vid_0c45&pid_652f"),
+        // normally set from config.json's "vidPid" by the calling script.
+        public static string VidPid = "vid_320f&pid_5064";
         const int ReportLen = 64;
 
         static SafeFileHandle _dev;

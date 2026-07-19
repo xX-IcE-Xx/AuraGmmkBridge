@@ -7,6 +7,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -Path "$PSScriptRoot\GmmkHid.cs"
+$cfg = Get-Content "$PSScriptRoot\config.json" -Raw | ConvertFrom-Json
+if ($cfg.vidPid) { [AuraGmmkBridge.Gmmk]::VidPid = $cfg.vidPid }
 [AuraGmmkBridge.Gmmk]::Connect()
 [AuraGmmkBridge.Gmmk]::SetStatic($R, $G, $B)
 Write-Host "Keyboard set to static $R,$G,$B"
