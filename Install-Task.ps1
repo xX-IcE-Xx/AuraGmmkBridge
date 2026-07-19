@@ -2,13 +2,12 @@
 # Run from the folder containing Bridge.ps1.
 $ErrorActionPreference = 'Stop'
 
-# Task Scheduler can't resolve the Microsoft Store pwsh alias from PATH, so pin
-# the full path to whichever pwsh this is running under.
-$pwshPath = (Get-Process -Id $PID).Path
-if (-not $pwshPath -or $pwshPath -notmatch 'pwsh') {
-    $pwshPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\pwsh.exe"
-    if (-not (Test-Path $pwshPath)) { $pwshPath = 'pwsh.exe' }
-}
+# Task Scheduler can't resolve bare "pwsh.exe" for Store installs, and the real
+# WindowsApps package path is version-pinned (breaks on updates) — prefer the
+# stable per-user alias, then the current process, then PATH.
+$pwshPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\pwsh.exe"
+if (-not (Test-Path $pwshPath)) { $pwshPath = (Get-Process -Id $PID).Path }
+if (-not $pwshPath -or $pwshPath -notmatch 'pwsh') { $pwshPath = 'pwsh.exe' }
 
 $bridge   = Join-Path $PSScriptRoot 'Bridge.ps1'
 
