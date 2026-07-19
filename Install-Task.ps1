@@ -11,7 +11,13 @@ if (-not $pwshPath -or $pwshPath -notmatch 'pwsh') {
 }
 
 $bridge   = Join-Path $PSScriptRoot 'Bridge.ps1'
-$action   = New-ScheduledTaskAction -Execute $pwshPath -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$bridge`""
+
+# Launch through "conhost --headless": on Windows 11 a console app started by an
+# interactive task gets hosted by the user's default terminal (Windows Terminal),
+# so closing the terminal window kills the bridge with 0xC000013A. Forcing a
+# headless classic conhost keeps the bridge alive with no window at all.
+$action   = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\conhost.exe" `
+                -Argument "--headless `"$pwshPath`" -NoProfile -ExecutionPolicy Bypass -File `"$bridge`""
 $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                 -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
