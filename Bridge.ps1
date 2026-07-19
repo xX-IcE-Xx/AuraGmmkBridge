@@ -18,6 +18,20 @@ $ConfigFile = "$PSScriptRoot\config.json"
 Add-Type -Path "$PSScriptRoot\GmmkHid.cs"
 
 $Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+$script:profile = 0    # active onboard profile, refreshed on connect
+
+# The keyboard occasionally drops a write right after a burst of commands
+# (SetOutputReport succeeds but the firmware keeps the old value), so every
+# brightness change is read back and retried until it sticks.
+function Set-KbdBrightness([byte]$level) {
+    for ($try = 1; $try -le 3; $try++) {
+        [AuraGmmkBridge.Gmmk]::SetBrightness($level)
+        Start-Sleep -Milliseconds 300
+        $led = [AuraGmmkBridge.Gmmk]::ReadLedSettings($script:profile)
+        if ($led -and $led[9] -eq $level) { return }
+    }
+    Write-Log "Brightness $level did not stick after 3 attempts"
+}
 
 function Write-Log([string]$msg) {
     $line = "{0:yyyy-MM-dd HH:mm:ss}  {1}" -f (Get-Date), $msg
@@ -84,6 +98,7 @@ function Get-AuraState {
 function Apply-ToKeyboard($state) {
     # Starry Night is special: it gets the effect pinned in config.json
     # (captured off the keyboard by Capture-CurrentEffect.ps1).
+    # Speed values are raw wire bytes: 0 = fastest, 3 = slowest.
     if ($state.Effect -match '^Star') {
         $pin = $Config.starryNight
         [AuraGmmkBridge.Gmmk]::SetMode([byte]$pin.mode)
@@ -92,6 +107,12 @@ function Apply-ToKeyboard($state) {
             [AuraGmmkBridge.Gmmk]::SetColor($state.R, $state.G, $state.B)
         } else {
             [AuraGmmkBridge.Gmmk]::SetColor([byte]$pin.rgb[0], [byte]$pin.rgb[1], [byte]$pin.rgb[2])
+        }
+        # verify the mode took; retry once if the firmware dropped the burst
+        $led = [AuraGmmkBridge.Gmmk]::ReadLedSettings($script:profile)
+        if ($led -and $led[8] -ne $pin.mode) {
+            Start-Sleep -Milliseconds 300
+            [AuraGmmkBridge.Gmmk]::SetMode([byte]$pin.mode)
         }
         Write-Log ("Applied pinned mode 0x{0:X2} for Aura effect 'Star' (Starry Night)" -f [int]$pin.mode)
         return
@@ -179,6 +200,8 @@ if (-not $acquired) { Write-Log 'Another instance is running; exiting.'; exit 0 
 try {
     [AuraGmmkBridge.Gmmk]::Connect()
     Write-Log ([AuraGmmkBridge.Gmmk]::Status)
+    $info = [AuraGmmkBridge.Gmmk]::ReadState()
+    if ($info) { $script:profile = $info[18] }
 
     $lastWrite = [datetime]::MinValue
     $lastApply = [datetime]::MinValue
@@ -189,7 +212,7 @@ try {
     Update-EneState | Out-Null
     if ($script:eneLastFrameOff) {
         try {
-            [AuraGmmkBridge.Gmmk]::SetBrightness(0)
+            Set-KbdBrightness 0
             $kbdOff    = $true
             $lastWrite = (Get-Item $AuraScript -ErrorAction SilentlyContinue).LastWriteTimeUtc
             Write-Log 'Startup: Aura lighting is OFF -> keyboard RGB off'
@@ -201,7 +224,7 @@ try {
         $eneState = Update-EneState
         if ($eneState -eq 'off' -and -not $kbdOff) {
             try {
-                [AuraGmmkBridge.Gmmk]::SetBrightness(0)
+                Set-KbdBrightness 0
                 $kbdOff = $true
                 Write-Log 'Aura lighting is OFF -> keyboard RGB off'
             } catch { Write-Log "Off apply failed: $_" }
@@ -210,7 +233,7 @@ try {
             $kbdOff    = $false
             $lastState = ''                       # force re-apply of current effect
             $lastApply = [datetime]::MinValue
-            try { [AuraGmmkBridge.Gmmk]::SetBrightness([byte]$Config.brightness) } catch {}
+            try { Set-KbdBrightness ([byte]$Config.brightness) } catch {}
             Write-Log 'Aura lighting is back ON -> restoring effect'
         }
 
@@ -227,7 +250,7 @@ try {
                 $key = '{0}|{1}|{2}|{3}' -f $state.Effect, $state.R, $state.G, $state.B
                 try {
                     Apply-ToKeyboard $state
-                    if ($key -ne $lastState) { [AuraGmmkBridge.Gmmk]::SetBrightness([byte]$Config.brightness) }
+                    if ($key -ne $lastState) { Set-KbdBrightness ([byte]$Config.brightness) }
                     $lastState = $key
                     $lastWrite = $mtime
                     $lastApply = (Get-Date).ToUniversalTime()

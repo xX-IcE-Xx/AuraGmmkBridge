@@ -21,7 +21,7 @@ $modeNames = @{ 1='horizontal wave'; 2='pulse'; 3='hurricane'; 4='breathing colo
 $captured = [ordered]@{
     comment      = "Onboard effect pinned to Armoury Crate's Starry Night. Re-capture with Capture-CurrentEffect.ps1. mode {0} = {1}." -f $led[8], $modeNames[[int]$led[8]]
     mode         = [int]$led[8]
-    speed        = [int](3 - $led[10])
+    speed        = [int]$led[10]    # raw wire byte: 0 = fastest, 3 = slowest
     direction    = [int]$led[11]
     rgb          = @([int]$led[13], [int]$led[14], [int]$led[15])
     useAuraColor = $false
@@ -32,5 +32,5 @@ $config = Get-Content $configFile -Raw | ConvertFrom-Json
 $config.starryNight = [pscustomobject]$captured
 $config | ConvertTo-Json -Depth 5 | Set-Content $configFile
 
-Write-Host ("Captured: mode {0} ({1}), speed {2}, rgb {3},{4},{5} -> pinned to Starry Night in config.json" -f `
-    $led[8], $modeNames[[int]$led[8]], (3 - $led[10]), $led[13], $led[14], $led[15])
+Write-Host ("Captured: mode {0} ({1}), raw speed {2}, rgb {3},{4},{5} -> pinned to Starry Night in config.json" -f `
+    $led[8], $modeNames[[int]$led[8]], $led[10], $led[13], $led[14], $led[15])
